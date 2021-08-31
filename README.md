@@ -1,4 +1,4 @@
-# sample-api
+# ERX test project, dotnet core 2.2.
 
 ## How to run it locally
 * Install Sql Server
