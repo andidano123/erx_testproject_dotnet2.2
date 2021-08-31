@@ -15,4 +15,12 @@ https://localhost:5001/swagger
 ```
 
 You can find simple test frontend web page in test directory.
-
+```
+//index.html
+...
+var current_qtype = 0;
+    var api_url = "http://localhost:27224";   // you can change this url.
+    $("#btn_start").click(function(){        
+        var email = $("#txt_email").val();
+...
+```
