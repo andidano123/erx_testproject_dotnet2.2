@@ -14,5 +14,5 @@ dotnet run
 https://localhost:5001/swagger
 ```
 
-Test frontend web page can find in test directory.
+You can find simple test frontend web page in test directory.
 
