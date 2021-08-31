@@ -1,0 +1,229 @@
+<html>
+
+<head>
+    <title>ERX questionnaire system</title>
+    <script src="./jquery-2.1.4.min.js"></script>
+</head>
+
+<body>
+    <div>
+        Welcome, ERX questionnaire system!<br><br>
+        <form id="form_account">
+            <table>
+                <tr>
+                    <td>
+                        <label for = "txt_email">Email/Username</label>
+                    </td>
+                    <td>
+                        <input type="email" id="txt_email"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: center;">
+                        <input type="button" id="btn_start" value="Go To Answer"/>
+                    </td>
+                </tr>
+                
+            </table>            
+        </form>
+        <div id="div_result" style="display: none;;">
+            <p>You have finished questionnaire!</p>        
+            <br>
+            <p>End Time:<span id="txt_finishtime"></span></p>
+            <input type="button" id="btn_review" value="Review Answer"/>
+            <input type="button" id="btn_download" value="Download CSV"/>
+        </div>
+        <div id="div_answering" style="display: none;;">
+            <h3 id="txt_category_title"></h3>
+            <div style="display:flex;">
+                <div id="txt_question_title" style="margin-right:20px;">
+
+                </div> 
+                <div id="div_answer" >
+                
+                </div>           
+            </div>
+            
+            <br>
+            <br>
+            <input type="button" id="btn_next" value="Next"/>
+        </div>
+
+        <div id="div_final_answer" style="display: none;;">
+            <p>My Answers: </p>        
+            <div id="list_answer"></div>
+        </div>
+
+    </div>
+</body>
+<script>
+    var userid = 0;
+    var current_qid = 0;
+    var current_qtype = 0;
+    var api_url = "http://localhost:27224";
+    $("#btn_start").click(function(){        
+        var email = $("#txt_email").val();
+        
+        if(email == null || email.length == 0){
+            alert('Email/Username can not be empty!');
+            return;
+        }
+        var data = {'email':email};
+        $.ajax({
+            url:  api_url+'/check_account',
+            type: 'post',
+            dataType: "json",
+            data:JSON.stringify(data),            
+            contentType: "application/json;charset=utf-8",
+            success:function(data){
+                if(data.code != 200){
+                    alert("server error");                    
+                }else{
+                    userid = data.userID;
+                    render_result_answering(data);
+                }                
+            },
+            error:function(data){
+                alert("server error");
+            }
+        })
+    });
+    
+
+    $("#btn_next").click(function(){                
+        var answer = "";
+        if(current_qtype == 1 || current_qtype == 2){
+            answer = $("#txt_answer").val();
+            if(answer == null || answer.length == 0){
+                alert('Answer can not be empty!');
+                return;
+            }
+        }
+        else{   
+            const cars = [];         
+            $( ".chk" ).each(function() {
+                if($(this).prop("checked"))
+                    cars.push($(this).val());
+            });
+            answer = JSON.stringify(cars);
+        }
+        var data = {'userid':userid, 'qid':current_qid, 'answer':answer};
+        $.ajax({
+            url:  api_url+'/check_answer',
+            type: 'post',
+            dataType: "json",
+            data:JSON.stringify(data),            
+            contentType: "application/json;charset=utf-8",
+            success:function(data){
+                if(data.code != 200){
+                    alert("server error");                    
+                }else{
+                    render_result_answering(data);                  
+                }                
+            },
+            error:function(data){
+                alert("server error");
+            }
+        })
+    });
+
+    function render_result_answering(data){
+        if(data.nextStatus == 1){
+            $("#txt_finishtime").text(data.accountData.finishAnswerAt);
+            $("#div_result").show();
+            $("#form_account").hide();
+            $("#div_answering").hide();
+        }else if(data.nextStatus == 0)
+        {
+            $("#div_answer").html("");
+            current_qid = data.questionData.id;
+            current_qtype = data.questionData.questionType;
+            $("#txt_category_title").text(data.questionData.categoryTitle);
+            $("#txt_question_title").text(data.questionData.title);
+
+            var htmlStr = "";
+            if(data.questionData.questionType == 1){
+                htmlStr="<input id='txt_answer'/>";
+            }else if(data.questionData.questionType == 2){
+                htmlStr = "<select id='txt_answer'>";         
+                var tdata = data.questionData.typeContent;
+                var tobj = JSON.parse(tdata);
+                for(var i = 0; i<tobj.length; i++){
+                    htmlStr+="<option value='"+tobj[i]+"'>"+tobj[i]+"</option>";
+                }            
+                htmlStr+="</select>";
+            }else if(data.questionData.questionType == 3){
+                var tdata = data.questionData.typeContent;
+                var tobj = JSON.parse(tdata);
+                for(var i = 0; i<tobj.length; i++){
+                    htmlStr+="<input class='chk' style='margin-left:20px;' id='chk"+i+"' type='checkbox' value='"+tobj[i]+"'><label for='chk"+i+"'>"+tobj[i]+"</label>";
+                }
+            }
+            $("#div_answer").html(htmlStr);
+
+            $("#div_answering").show();
+            $("#form_account").hide();
+        }
+    }
+    $("#btn_review").click(function(){     
+        var data = {'userid':userid};
+        $.ajax({
+            url:  api_url+'/get_answer_list',
+            type: 'post',
+            dataType: "json",
+            data:JSON.stringify(data),            
+            contentType: "application/json;charset=utf-8",
+            success:function(data){
+                if(data.code != 200){
+                    alert("server error");                    
+                }else{
+
+                    
+                    var htmlStr = "";
+                    var cate_data = data.categoryList;
+                    for(var i = 0; i<cate_data.length; i++){
+                        var answer_data = cate_data[i].answerList;
+                        if(answer_data != null){
+                            htmlStr+="<h3>"+cate_data[i].title+"</h3>";
+
+                            for(var j = 0; j<answer_data.length; j++){
+                                if(answer_data[j].questionType == 3){
+                                    var temp = JSON.parse(answer_data[j].answer);                                
+                                    htmlStr+="<p>"+answer_data[j].questionSequence+"."+answer_data[j].questionTitle+":";
+                                    for(var k = 0; k<temp.length; k++){
+                                        htmlStr += temp[k];
+                                        if(k != temp.length - 1)
+                                            htmlStr += ",";
+                                    }
+                                        
+                                    htmlStr += "</p>";
+                                }else
+                                    htmlStr+="<p>"+answer_data[j].questionSequence+"."+answer_data[j].questionTitle+":"+answer_data[j].answer+"</p>";
+                            }
+                            htmlStr+="<hr>";
+
+                        }
+                        
+                    }
+                    $("#div_final_answer").show();
+                    $("#list_answer").html(htmlStr);
+                } 
+            },
+            error:function(data){
+                alert("server error");
+            }
+        })                
+    });
+
+    $("#btn_download").click(function(){       
+        document.location.href=api_url+"/download_csv?userid="+userid;
+    });
+</script>
+
+</html>
